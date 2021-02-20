@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+# detect the directory housing this script
+repo_path="$(
+    cd "$(dirname "$0")" >/dev/null 2>&1
+    pwd -P
+)"
+
+# make sure 0 < args < 2
+if [ $# -eq 0 ] || [ $# -gt 2 ]; then
+    [ $# -gt 0 ] &&
+        echo "too many arguments" &&
+        echo ""
+    echo "usage: shorten <url> <alias>"
+    exit 1
+fi
+
+template() {
+    cat <<-EOT
+	<!DOCTYPE html>
+	<html>
+		<head><meta http-equiv="refresh" content="0;url=$1"></head>
+		<body>Redirecting to <a href="$1">$1</a></body>
+	</html>
+EOT
+}
+
+# encode the url and optional alias in to a commit message
+payload="$1"
+[[ "$2" != "" ]] && payload="${payload}"$'\n'" ($2)"
+
+# detect the primary branch (main/master)
+primary_branch=$(git -C "$repo_path" remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
+
+# create an empty commit so that we can obtain a hash
+git -C "$repo_path" checkout --quiet redirects
+git -C "$repo_path" commit --quiet --quiet --allow-empty -m "$payload"
+
+# generate the new redirect html file
+sha="$(git log --format=%h -n 1 HEAD)"
+url=$1
+alias=$2
+echo "$(template $url)" >"$sha".html
+[[ "$alias" != "" ]] && echo "$(template $url)" >"$alias".html
+
+git -C "$repo_path" add . && git -C "$repo_path" commit --quiet --allow-empty -m "$payload"
+git -C "$repo_path" checkout --quiet $primary_branch
+git -C "$repo_path" push --quiet --all origin
+
+git remote get-url origin | sed -En 's/.*:([^\/]+)\/(.*)\.git/https:\/\/\1.github.io\/\2\/'"${alias:-$sha}"'/p'
