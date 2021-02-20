@@ -43,8 +43,12 @@ alias=$2
 echo "$(template $url)" >"$sha".html
 [[ "$alias" != "" ]] && echo "$(template $url)" >"$alias".html
 
-git -C "$repo_path" add . && git -C "$repo_path" commit --quiet --allow-empty -m "$payload"
+# piece together the github pages url by parsing the user/repo name
+# out of the origin remote
+shortened_url=$(git remote get-url origin | sed -En 's/.*:([^\/]+)\/(.*)\.git/https:\/\/\1.github.io\/\2\/'"${alias:-$sha}"'/p')
+
+git -C "$repo_path" add . && git -C "$repo_path" commit --quiet --allow-empty -m "$url"$'\n'"➡️ $shortened_url"
 git -C "$repo_path" checkout --quiet $primary_branch
 git -C "$repo_path" push --quiet --all origin
 
-git remote get-url origin | sed -En 's/.*:([^\/]+)\/(.*)\.git/https:\/\/\1.github.io\/\2\/'"${alias:-$sha}"'/p'
+echo $shortened_url
