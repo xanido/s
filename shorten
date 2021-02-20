@@ -51,4 +51,4 @@ git -C "$repo_path" add . && git -C "$repo_path" commit --quiet --allow-empty -m
 git -C "$repo_path" checkout --quiet $primary_branch
 git -C "$repo_path" push --quiet --all origin
 
-echo $shortened_url
+echo ➡️ $shortened_url
